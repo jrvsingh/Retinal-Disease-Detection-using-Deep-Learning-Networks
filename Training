@@ -1,0 +1,104 @@
+Training the model using CNN
+
+import os  # Import the os module for operating system related functionalities
+import tensorflow as tf  # Import TensorFlow library
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D, Dropout  # Import layers for building the model
+from tensorflow.keras.models import Sequential, load_model  # Import Sequential model and load_model function
+from tensorflow.keras.preprocessing.image import ImageDataGenerator  # Import ImageDataGenerator for image preprocessing
+from tensorflow.keras.callbacks import ModelCheckpoint  # Import ModelCheckpoint callback for saving model checkpoints
+
+# Define directories for training, testing, and validation data
+train_dir = r"E:\Documents\Docs\Pradeesh\Academic\VESIT\CNN_project\OCT2017\trainnew"  # Path to training data
+test_dir = r"E:\Documents\Docs\Pradeesh\Academic\VESIT\CNN_project\OCT2017\testnew"  # Path to testing data
+validation_dir = r"E:\Documents\Docs\Pradeesh\Academic\VESIT\CNN_project\OCT2017\validation"  # Path to validation data
+
+# Set up data generators with rescaling
+train_datagen = ImageDataGenerator(rescale=1./255)  # Normalize pixel values for training data
+test_datagen = ImageDataGenerator(rescale=1./255)  # Normalize pixel values for testing data
+validation_datagen = ImageDataGenerator(rescale=1./255)  # Normalize pixel values for validation data
+
+# Generate batches of data from directories
+training_set = train_datagen.flow_from_directory(  # Generate training data batches
+    train_dir,
+    target_size=(128, 128),  # Resize images to 128x128 pixels
+    class_mode="categorical",  # Use categorical labels for classification
+    batch_size=64,  # Set batch size to 64
+    shuffle=True  # Shuffle the data
+)
+
+test_set = test_datagen.flow_from_directory(  # Generate testing data batches
+    test_dir,
+    target_size=(128, 128),  # Resize images to 128x128 pixels
+    batch_size=64,  # Set batch size to 64
+    class_mode="categorical",  # Use categorical labels for classification
+    shuffle=True  # Shuffle the data
+)
+
+validation_set = validation_datagen.flow_from_directory(  # Generate validation data batches
+    validation_dir,
+    target_size=(128, 128),  # Resize images to 128x128 pixels
+    batch_size=64,  # Set batch size to 64
+    class_mode="categorical",  # Use categorical labels for classification
+    shuffle=True  # Shuffle the data
+)
+
+# Define the CNN model architecture
+model = Sequential([  # Define a Sequential model
+    Conv2D(16, (3, 3), activation='relu', input_shape=(128, 128, 3)),  # Convolutional layer with 16 filters and ReLU activation
+    MaxPooling2D(pool_size=(2, 2)),  # Max pooling layer
+    Conv2D(32, (3, 3), activation='relu'),  # Convolutional layer with 32 filters and ReLU activation
+    MaxPooling2D(pool_size=(2, 2)),  # Max pooling layer
+    Conv2D(64, (3, 3), activation='relu'),  # Convolutional layer with 64 filters and ReLU activation
+    MaxPooling2D(pool_size=(2, 2)),  # Max pooling layer
+    Conv2D(128, (3, 3), activation='relu'),  # Convolutional layer with 128 filters and ReLU activation
+    MaxPooling2D(pool_size=(2, 2)),  # Max pooling layer
+    Conv2D(256, (3, 3), activation='relu'),  # Convolutional layer with 256 filters and ReLU activation
+    MaxPooling2D(pool_size=(2, 2)),  # Max pooling layer
+    Flatten(),  # Flatten layer
+    Dropout(0.3),  # Dropout layer with dropout rate of 0.3
+    Dense(256, activation='relu'),  # Fully connected layer with 256 units and ReLU activation
+    Dense(4, activation='softmax')  # Output layer with 4 units and softmax activation for multi-class classification
+])
+
+# Compile the model
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999)  # Adam optimizer
+model.compile(optimizer=optimizer,  # Compile the model with Adam optimizer
+              loss='categorical_crossentropy',  # Categorical crossentropy loss function
+              metrics=['accuracy'])  # Use accuracy as evaluation metric
+
+# Define model checkpoint callback to save best model during training
+checkpoint_callback = ModelCheckpoint('model_checkpoint_epoch_{epoch:02d}.h5',  # Callback to save best model
+                                      save_weights_only=True)  # Save only the weights
+
+# Display model summary
+model.summary()  # Display summary of the model architecture
+
+# Train the model
+total_epochs = 20  # Total number of epochs for training
+model.fit(  # Train the model
+    training_set,  # Training data
+    validation_data=validation_set,  # Validation data
+    epochs=total_epochs,  # Number of epochs
+    validation_steps=len(validation_set),  # Number of validation steps per epoch
+    steps_per_epoch=len(training_set),  # Number of training steps per epoch
+    callbacks=[checkpoint_callback]  # Callbacks for saving model checkpoints
+)
+
+# Load the best model weights and continue training
+n = 0  # Number of additional epochs to train
+model.load_weights('model_checkpoint_epoch_16.h5')  # Load best model weights from epoch 16
+model.fit(  # Continue training
+    training_set,  # Training data
+    validation_data=validation_set,  # Validation data
+    epochs=total_epochs + n,  # Number of epochs
+    validation_steps=len(validation_set),  # Number of validation steps per epoch
+    steps_per_epoch=len(training_set),  # Number of training steps per epoch
+    initial_epoch=16,  # Start from epoch 16
+    callbacks=[checkpoint_callback]  # Callbacks for saving model checkpoints
+)
+
+# Save the trained model
+model.save("Lord_cnn.h5")  # Save the trained model to an H5 file
+
+# Load the saved model
+loaded_model = load_model("Lord_cnn.h5")  # Load the saved model from the H5 file
