@@ -1,0 +1,70 @@
+Testing the model using CNN
+
+import tensorflow as tf  # Import TensorFlow library
+from keras.models import Model  # Import Model class from Keras
+from keras.preprocessing import image  # Import image preprocessing module from Keras
+from keras.preprocessing.image import load_img, img_to_array  # Import load_img and img_to_array functions from Keras
+import numpy as np  # Import NumPy library
+
+categories = ["CNV", "DME", "DRUSEN", "NORMAL"]  # List of categories for classification
+
+# Load the trained model
+model = tf.keras.models.load_model(r'C:\Users\asus\My Python Stuff\Lord_cnn.h5')
+
+# Function to preprocess an image for prediction
+def prepareImage(pathForImage):
+    image = load_img(pathForImage, target_size=(128, 128))  # Load image and resize to 128x128 pixels
+    imgResult = img_to_array(image)  # Convert image to array
+    imgResult = np.expand_dims(imgResult, axis=0)  # Add an extra dimension for batch size
+    imgResult = imgResult / 255.  # Normalize pixel values to range [0, 1]
+    return imgResult
+
+testImagePath = r'E:\Documents\Docs\Pradeesh\Academic\VESIT\CNN_project\OCT2017\testnew\NORMAL\NORMAL-12494-1.jpeg'  # Path to test image
+imgForModel = prepareImage(testImagePath)  # Preprocess test image for prediction
+
+@tf.function
+def predict_with_model(model, x):
+    return model(x)  # Function to make prediction using the loaded model
+
+resultArray = predict_with_model(model, imgForModel)  # Make prediction for the test image
+
+answer = np.argmax(resultArray, axis=1)  # Get the index of the predicted category
+print(answer)
+
+index = answer[0]  # Extract the predicted category index
+print("This image is: " + categories[index])  # Print the predicted category
+
+# Define the directory path to your test data
+test_data_dir = r'E:\Documents\Docs\Pradeesh\Academic\VESIT\CNN_project\OCT2017\testnew'
+
+# Define the image size and batch size for test data
+image_size = (128, 128)
+batch_size = 32
+
+# Use ImageDataGenerator to load and preprocess the test data
+test_data_generator = ImageDataGenerator(rescale=1.0 / 255.0)  # Normalize pixel values
+test_generator = test_data_generator.flow_from_directory(
+    test_data_dir,
+    target_size=image_size,
+    batch_size=batch_size,
+    class_mode='categorical',  # Use categorical mode since we have multiple classes
+    shuffle=False  # Do not shuffle the data
+)
+
+# Use the model to predict labels for the test data
+predicted_labels = model.predict(test_generator)
+
+# Convert predicted labels to actual class indices (use argmax)
+predicted_indices = np.argmax(predicted_labels, axis=1)
+
+# Get the actual labels from the test data generator
+actual_indices = test_generator.classes
+
+# Calculate the accuracy in percentage format
+correct_predictions = np.sum(predicted_indices == actual_indices)
+total_test_images = len(actual_indices)
+accuracy_percent = (correct_predictions / total_test_images) * 100
+
+print(f"Total Test Images: {total_test_images}")
+print(f"Correct Predictions: {correct_predictions}")
+print(f"Test Accuracy: {accuracy_percent:.2f}%")
